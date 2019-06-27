@@ -124,8 +124,16 @@ void TestData(const char* baseFileName, const std::vector<int>& rolls, int sides
         fclose(file);
     }
 
-
-    // TODO: write out actual values too. Might be useful & fun for some people
+    // write actual values
+    {
+        char fileName[256];
+        sprintf(fileName, "%s_%i_%i.txt", baseFileName, sides, numRolls);
+        FILE* file = nullptr;
+        fopen_s(&file, fileName, "w+t");
+        for (int i : rolls)
+            fprintf(file, "%i\n", i);
+        fclose(file);
+    }
 }
 
 void RollDiceUncorrelated(int sides, int numRolls)
@@ -141,7 +149,25 @@ void RollDiceUncorrelated(int sides, int numRolls)
     TestData("out/uncorrelated", rolls, sides, numRolls, 0, 5);
 }
 
-void RollDiceAdditive(int sides, int numDice, int numRolls)
+void RollDiceAdditiveUncorrelated(int sides, int numDice, int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // do dice rolls
+    std::vector<int> rolls(numRolls, 0);
+    for (int index = 0; index < numRolls; ++index)
+    {
+        for (int index2 = 0; index2 < numDice; ++index2)
+            rolls[index] += RollDice(rng, sides);
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/adduncorrelated%i", numDice);
+    TestData(fileName, rolls, sides, numRolls, 0, numDice * 5);
+}
+
+void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
 {
     std::mt19937 rng(GetRNGSeed());
 
@@ -162,7 +188,7 @@ void RollDiceAdditive(int sides, int numDice, int numRolls)
 
     // do tests
     char fileName[256];
-    sprintf(fileName, "out/add%i", numDice);
+    sprintf(fileName, "out/addcorrelated%i", numDice);
     TestData(fileName, rolls, sides, numRolls, 0, numDice * 5);
 }
 
@@ -193,24 +219,37 @@ void RollDiceSubtract(int sides, int numRolls)
 
 int main(int argc, char** argv)
 {
-    // white noise drawn from rectangular distribute
+    // white noise drawn from rectangular distribution
     RollDiceUncorrelated(6, 16);
     RollDiceUncorrelated(6, 128);
     RollDiceUncorrelated(6, 1024);
     RollDiceUncorrelated(6, 1024*1024);
 
-    // TODO: explain. red noise but...
-    RollDiceAdditive(6, 2, 16);
-    RollDiceAdditive(6, 2, 128);
-    RollDiceAdditive(6, 2, 1024);
-    RollDiceAdditive(6, 2, 1024*1024);
+    // white noise drawn from a triangular distribution
+    RollDiceAdditiveUncorrelated(6, 2, 16);
+    RollDiceAdditiveUncorrelated(6, 2, 128);
+    RollDiceAdditiveUncorrelated(6, 2, 1024);
+    RollDiceAdditiveUncorrelated(6, 2, 1024 * 1024);
 
-    RollDiceAdditive(6, 3, 16);
-    RollDiceAdditive(6, 3, 128);
-    RollDiceAdditive(6, 3, 1024);
-    RollDiceAdditive(6, 3, 1024 * 1024);
+    // more white noise drawn from a triangular distribution
+    RollDiceAdditiveUncorrelated(6, 3, 16);
+    RollDiceAdditiveUncorrelated(6, 3, 128);
+    RollDiceAdditiveUncorrelated(6, 3, 1024);
+    RollDiceAdditiveUncorrelated(6, 3, 1024 * 1024);
 
-    // TODO: explain. blue noise but...
+    // red noise drawn from a triangular distribution
+    RollDiceAdditiveCorrelated(6, 2, 16);
+    RollDiceAdditiveCorrelated(6, 2, 128);
+    RollDiceAdditiveCorrelated(6, 2, 1024);
+    RollDiceAdditiveCorrelated(6, 2, 1024*1024);
+
+    // more red noise drawn from a triangular distribution
+    RollDiceAdditiveCorrelated(6, 3, 16);
+    RollDiceAdditiveCorrelated(6, 3, 128);
+    RollDiceAdditiveCorrelated(6, 3, 1024);
+    RollDiceAdditiveCorrelated(6, 3, 1024 * 1024);
+
+    // blue noise drawn from a triangular distribution
     RollDiceSubtract(6, 16);
     RollDiceSubtract(6, 128);
     RollDiceSubtract(6, 1024);
