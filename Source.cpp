@@ -87,9 +87,67 @@ void DFT(const std::vector<float>& imageSrc, std::vector<float>& imageDest)
     }
 }
 
-void TestData(const char* baseFileName, const std::vector<int>& rolls, int sides, int numRolls, int minValue, int maxValue)
+void TestData(const char* baseFileName, const std::vector<float>& rolls, float mean, float sigma)
+{
+    // get min / max values
+    float minValue = rolls[0];
+    float maxValue = rolls[0];
+    for (float f : rolls)
+    {
+        minValue = std::min(minValue, f);
+        maxValue = std::max(maxValue, f);
+    }
+
+    // make histogram
+    int numRolls = int(rolls.size());
+    std::vector<int> histogram(101, 0);
+    for (int index = 0; index < numRolls; ++index)
+    {
+        size_t percent = size_t(100.0f * (rolls[index] - minValue) / (maxValue - minValue));
+        histogram[percent]++;
+    }
+
+    // write histogram
+    {
+        char fileName[256];
+        sprintf(fileName, "%s_%i_%i_%i_histogram.csv", baseFileName, int(mean), int(sigma), numRolls);
+        FILE* file = nullptr;
+        fopen_s(&file, fileName, "w+t");
+        for (int index = 0; index < histogram.size(); ++index)
+            fprintf(file, "\"%i\",\"%i\"\n", index, histogram[index]);
+        fclose(file);
+    }
+
+    // write DFT
+    {
+        std::vector<float> rollsFloatMag;
+        DFT(rolls, rollsFloatMag);
+
+        char fileName[256];
+        sprintf(fileName, "%s_%i_%i_%i_DFTMag.csv", baseFileName, int(mean), int(sigma), numRolls);
+        FILE* file = nullptr;
+        fopen_s(&file, fileName, "w+t");
+        for (int index = 0; index < int(numRolls); ++index)
+            fprintf(file, "\"%i\",\"%f\"\n", int(index) - int(numRolls) / 2, rollsFloatMag[index]);
+        fclose(file);
+    }
+
+    // write actual values
+    {
+        char fileName[256];
+        sprintf(fileName, "%s_%i_%i_%i.txt", baseFileName, int(mean), int(sigma), numRolls);
+        FILE* file = nullptr;
+        fopen_s(&file, fileName, "w+t");
+        for (float f : rolls)
+            fprintf(file, "%f\n", f);
+        fclose(file);
+    }
+}
+
+void TestData(const char* baseFileName, const std::vector<int>& rolls, int sides, int minValue, int maxValue)
 {
     // make float data and histogram
+    int numRolls = int(rolls.size());
     std::vector<float> rollsFloat(numRolls);
     std::vector<int> histogram(maxValue - minValue + 1, 0);
     for (int index = 0; index < numRolls; ++index)
@@ -119,8 +177,7 @@ void TestData(const char* baseFileName, const std::vector<int>& rolls, int sides
         FILE* file = nullptr;
         fopen_s(&file, fileName, "w+t");
         for (int index = 0; index < int(numRolls); ++index)
-            fprintf(file, "\"%i\",\"%f\"\n", int(index) - int(numRolls) / 2, rollsFloatMag[index]); // TODO: are these frequencies correct? test & verify!
-        // TODO: they definitely aren't correct now that we have a minValue! fix!
+            fprintf(file, "\"%i\",\"%f\"\n", int(index) - int(numRolls) / 2, rollsFloatMag[index]);
         fclose(file);
     }
 
@@ -146,8 +203,23 @@ void RollDiceUncorrelated(int sides, int numRolls)
         rolls[index] = RollDice(rng, sides);
 
     // do tests
-    TestData("out/uncorrelated", rolls, sides, numRolls, 0, 5);
+    TestData("out/uncorrelated", rolls, sides, 0, 5);
 }
+
+void GaussianUncorrelated(float mean, float sigma, int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+    std::normal_distribution<float> dist(mean, sigma);
+
+    // do dice rolls
+    std::vector<float> rolls(numRolls, 0);
+    for (int index = 0; index < numRolls; ++index)
+        rolls[index] = dist(rng);
+
+    // do tests
+    TestData("out/gaussianuncorrelated", rolls, mean, sigma);
+}
+
 
 void RollDiceAdditiveUncorrelated(int sides, int numDice, int numRolls)
 {
@@ -164,7 +236,7 @@ void RollDiceAdditiveUncorrelated(int sides, int numDice, int numRolls)
     // do tests
     char fileName[256];
     sprintf(fileName, "out/adduncorrelated%i", numDice);
-    TestData(fileName, rolls, sides, numRolls, 0, numDice * 5);
+    TestData(fileName, rolls, sides, 0, numDice * 5);
 }
 
 void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
@@ -189,12 +261,32 @@ void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
     // do tests
     char fileName[256];
     sprintf(fileName, "out/addcorrelated%i", numDice);
-    TestData(fileName, rolls, sides, numRolls, 0, numDice * 5);
+    TestData(fileName, rolls, sides, 0, numDice * 5);
 }
 
-void RollDiceSubtract(int sides, int numRolls)
+void RollDiceSubtractUncorrelated(int sides, int numRolls)
 {
-    // TODO: how to handle more than 2 dice?
+    int numDice = 2;
+
+    std::mt19937 rng(GetRNGSeed());
+
+    // do dice rolls
+    std::vector<int> currentDice(numDice);
+    std::vector<int> rolls(numRolls, 0);
+    for (int index = 0; index < numRolls; ++index)
+    {
+        for (int index2 = 0; index2 < numDice; ++index2)
+            currentDice[index2] = RollDice(rng, sides);
+
+        rolls[index] = currentDice[index % numDice] - currentDice[(index + 1) % numDice];
+    }
+
+    // do tests
+    TestData("out/subuncorrelated2", rolls, sides, -(sides - 1), sides - 1);
+}
+
+void RollDiceSubtractCorrelated(int sides, int numRolls)
+{
     int numDice = 2;
 
     std::mt19937 rng(GetRNGSeed());
@@ -214,46 +306,73 @@ void RollDiceSubtract(int sides, int numRolls)
     }
 
     // do tests
-    TestData("out/sub2", rolls, sides, numRolls, -5, 5);
+    TestData("out/subcorrelated2", rolls, sides, -(sides-1), sides-1);
 }
 
 int main(int argc, char** argv)
 {
     // white noise drawn from rectangular distribution
+    printf("RollDiceUncorrelated\n\n");
     RollDiceUncorrelated(6, 16);
     RollDiceUncorrelated(6, 128);
     RollDiceUncorrelated(6, 1024);
     RollDiceUncorrelated(6, 1024*1024);
 
+    // white noise drawn from a gaussian distribution
+    printf("GaussianUncorrelated\n\n");
+    GaussianUncorrelated(0.0f, 1.0f, 16);
+    GaussianUncorrelated(0.0f, 1.0f, 128);
+    GaussianUncorrelated(0.0f, 1.0f, 1024);
+    GaussianUncorrelated(0.0f, 1.0f, 1024 * 1024);
+
+    // more white noise drawn from a gaussian distribution
+    printf("GaussianUncorrelated\n\n");
+    GaussianUncorrelated(1.0f, 3.0f, 16);
+    GaussianUncorrelated(1.0f, 3.0f, 128);
+    GaussianUncorrelated(1.0f, 3.0f, 1024);
+    GaussianUncorrelated(1.0f, 3.0f, 1024 * 1024);
+
     // white noise drawn from a triangular distribution
+    printf("RollDiceAdditiveUncorrelated\n\n");
     RollDiceAdditiveUncorrelated(6, 2, 16);
     RollDiceAdditiveUncorrelated(6, 2, 128);
     RollDiceAdditiveUncorrelated(6, 2, 1024);
     RollDiceAdditiveUncorrelated(6, 2, 1024 * 1024);
 
     // more white noise drawn from a triangular distribution
+    printf("RollDiceAdditiveUncorrelated\n\n");
     RollDiceAdditiveUncorrelated(6, 3, 16);
     RollDiceAdditiveUncorrelated(6, 3, 128);
     RollDiceAdditiveUncorrelated(6, 3, 1024);
     RollDiceAdditiveUncorrelated(6, 3, 1024 * 1024);
 
     // red noise drawn from a triangular distribution
+    printf("RollDiceAdditiveCorrelated\n\n");
     RollDiceAdditiveCorrelated(6, 2, 16);
     RollDiceAdditiveCorrelated(6, 2, 128);
     RollDiceAdditiveCorrelated(6, 2, 1024);
     RollDiceAdditiveCorrelated(6, 2, 1024*1024);
 
     // more red noise drawn from a triangular distribution
+    printf("RollDiceAdditiveCorrelated\n\n");
     RollDiceAdditiveCorrelated(6, 3, 16);
     RollDiceAdditiveCorrelated(6, 3, 128);
     RollDiceAdditiveCorrelated(6, 3, 1024);
     RollDiceAdditiveCorrelated(6, 3, 1024 * 1024);
 
     // blue noise drawn from a triangular distribution
-    RollDiceSubtract(6, 16);
-    RollDiceSubtract(6, 128);
-    RollDiceSubtract(6, 1024);
-    RollDiceSubtract(6, 1024 * 1024);
+    printf("RollDiceSubtractCorrelated\n\n");
+    RollDiceSubtractCorrelated(6, 16);
+    RollDiceSubtractCorrelated(6, 128);
+    RollDiceSubtractCorrelated(6, 1024);
+    RollDiceSubtractCorrelated(6, 1024 * 1024);
+
+    // white noise drawn from a triangular distribution
+    printf("RollDiceSubtractUncorrelated\n\n");
+    RollDiceSubtractUncorrelated(6, 16);
+    RollDiceSubtractUncorrelated(6, 128);
+    RollDiceSubtractUncorrelated(6, 1024);
+    RollDiceSubtractUncorrelated(6, 1024 * 1024);
 
     return 0;
 }
@@ -264,7 +383,8 @@ int main(int argc, char** argv)
 TODO:
 - the experiments from https://www.digido.com/ufaqs/dither-noise-probability-density-explained/
 - particularly that drawing from gaussian can be white noise?!
-- deal with todos
-- is there a way we can zip the csv's to take up less space in repo?
+
+
+? how would you have more than 2 dice in the RollDiceSubtract?
 
 */
