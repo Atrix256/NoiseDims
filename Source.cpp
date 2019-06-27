@@ -264,10 +264,8 @@ void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
     TestData(fileName, rolls, sides, 0, numDice * 5);
 }
 
-void RollDiceSubtractUncorrelated(int sides, int numRolls)
+void RollDiceSubtractUncorrelated(int sides, int numRolls, int numDice)
 {
-    int numDice = 2;
-
     std::mt19937 rng(GetRNGSeed());
 
     // do dice rolls
@@ -278,17 +276,18 @@ void RollDiceSubtractUncorrelated(int sides, int numRolls)
         for (int index2 = 0; index2 < numDice; ++index2)
             currentDice[index2] = RollDice(rng, sides);
 
-        rolls[index] = currentDice[index % numDice] - currentDice[(index + 1) % numDice];
+        for (int i = 0; i < numDice; ++i)
+            rolls[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
     }
 
     // do tests
-    TestData("out/subuncorrelated2", rolls, sides, -(sides - 1), sides - 1);
+    char fileName[256];
+    sprintf(fileName, "out/subuncorrelated%i", numDice);
+    TestData(fileName, rolls, sides, -(sides - 1)*(numDice-1), (sides - 1)*(numDice-1));
 }
 
-void RollDiceSubtractCorrelated(int sides, int numRolls)
+void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice)
 {
-    int numDice = 2;
-
     std::mt19937 rng(GetRNGSeed());
 
     // prime the dice
@@ -301,12 +300,14 @@ void RollDiceSubtractCorrelated(int sides, int numRolls)
     for (int index = 0; index < numRolls; ++index)
     {
         currentDice[index % numDice] = RollDice(rng, sides);
-
-        rolls[index] = currentDice[index % numDice] - currentDice[(index+1) % numDice];
+        for (int i = 0; i < numDice; ++i)
+            rolls[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
     }
 
     // do tests
-    TestData("out/subcorrelated2", rolls, sides, -(sides-1), sides-1);
+    char fileName[256];
+    sprintf(fileName, "out/subcorrelated%i", numDice);
+    TestData(fileName, rolls, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
 }
 
 int main(int argc, char** argv)
@@ -353,7 +354,7 @@ int main(int argc, char** argv)
     RollDiceAdditiveCorrelated(6, 2, 1024);
     RollDiceAdditiveCorrelated(6, 2, 1024*1024);
 
-    // more red noise drawn from a triangular distribution
+    // more red noise drawn from a "triangular" distribution
     printf("RollDiceAdditiveCorrelated\n\n");
     RollDiceAdditiveCorrelated(6, 3, 16);
     RollDiceAdditiveCorrelated(6, 3, 128);
@@ -362,17 +363,38 @@ int main(int argc, char** argv)
 
     // blue noise drawn from a triangular distribution
     printf("RollDiceSubtractCorrelated\n\n");
-    RollDiceSubtractCorrelated(6, 16);
-    RollDiceSubtractCorrelated(6, 128);
-    RollDiceSubtractCorrelated(6, 1024);
-    RollDiceSubtractCorrelated(6, 1024 * 1024);
+    RollDiceSubtractCorrelated(6, 16, 2);
+    RollDiceSubtractCorrelated(6, 128, 2);
+    RollDiceSubtractCorrelated(6, 1024, 2);
+    RollDiceSubtractCorrelated(6, 1024 * 1024, 2);
+
+    // more blue noise drawn from a "triangular" distribution
+    printf("RollDiceSubtractCorrelated\n\n");
+    RollDiceSubtractCorrelated(6, 16, 3);
+    RollDiceSubtractCorrelated(6, 128, 3);
+    RollDiceSubtractCorrelated(6, 1024, 3);
+    RollDiceSubtractCorrelated(6, 1024 * 1024, 3);
+
+    // more blue noise drawn from a "triangular" distribution
+    printf("RollDiceSubtractCorrelated\n\n");
+    RollDiceSubtractCorrelated(6, 16, 4);
+    RollDiceSubtractCorrelated(6, 128, 4);
+    RollDiceSubtractCorrelated(6, 1024, 4);
+    RollDiceSubtractCorrelated(6, 1024 * 1024, 4);
 
     // white noise drawn from a triangular distribution
     printf("RollDiceSubtractUncorrelated\n\n");
-    RollDiceSubtractUncorrelated(6, 16);
-    RollDiceSubtractUncorrelated(6, 128);
-    RollDiceSubtractUncorrelated(6, 1024);
-    RollDiceSubtractUncorrelated(6, 1024 * 1024);
+    RollDiceSubtractUncorrelated(6, 16, 2);
+    RollDiceSubtractUncorrelated(6, 128, 2);
+    RollDiceSubtractUncorrelated(6, 1024, 2);
+    RollDiceSubtractUncorrelated(6, 1024 * 1024, 2);
+
+    // more white noise drawn from a "triangular" distribution
+    printf("RollDiceSubtractUncorrelated\n\n");
+    RollDiceSubtractUncorrelated(6, 16, 3);
+    RollDiceSubtractUncorrelated(6, 128, 3);
+    RollDiceSubtractUncorrelated(6, 1024, 3);
+    RollDiceSubtractUncorrelated(6, 1024 * 1024, 3);
 
     return 0;
 }
@@ -384,7 +406,8 @@ TODO:
 - the experiments from https://www.digido.com/ufaqs/dither-noise-probability-density-explained/
 - particularly that drawing from gaussian can be white noise?!
 
+? did your multi dice experiment work with blue noise??
 
-? how would you have more than 2 dice in the RollDiceSubtract?
+! histogram (range?) seems slightly wrong somehow. need to look into it.
 
 */
