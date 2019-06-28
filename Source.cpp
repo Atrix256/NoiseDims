@@ -312,92 +312,57 @@ void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice)
 
 int main(int argc, char** argv)
 {
+    int c_rolls[] =
+    {
+        16,
+        128,
+        1024,
+        1024 * 16
+    };
 
-    // TODO: could put this in a for loop where you have a table of how many samples to do, and pass that to each function!
+    for (int rollsIndex = 0; rollsIndex < _countof(c_rolls); ++rollsIndex)
+    {
+        int numRolls = c_rolls[rollsIndex];
 
-    // white noise drawn from rectangular distribution
-    printf("RollDiceUncorrelated\n\n");
-    RollDiceUncorrelated(6, 16);
-    RollDiceUncorrelated(6, 128);
-    RollDiceUncorrelated(6, 1024);
-    RollDiceUncorrelated(6, 1024*16);
+        // white noise
+        {
+            // white noise drawn from rectangular distribution
+            {
+                RollDiceUncorrelated(6, numRolls);
+            }
 
-    // white noise drawn from a gaussian distribution
-    printf("GaussianUncorrelated\n\n");
-    GaussianUncorrelated(0.0f, 1.0f, 16);
-    GaussianUncorrelated(0.0f, 1.0f, 128);
-    GaussianUncorrelated(0.0f, 1.0f, 1024);
-    GaussianUncorrelated(0.0f, 1.0f, 1024 * 16);
+            // white noise drawn from a triangular distribution
+            {
+                RollDiceAdditiveUncorrelated(6, 2, numRolls);
+                RollDiceAdditiveUncorrelated(6, 3, numRolls);
+            }
 
-    // more white noise drawn from a gaussian distribution
-    printf("GaussianUncorrelated\n\n");
-    GaussianUncorrelated(1.0f, 3.0f, 16);
-    GaussianUncorrelated(1.0f, 3.0f, 128);
-    GaussianUncorrelated(1.0f, 3.0f, 1024);
-    GaussianUncorrelated(1.0f, 3.0f, 1024 * 16);
+            // white noise drawn from a triangular distribution
+            {
+                RollDiceSubtractUncorrelated(6, numRolls, 2);
+                RollDiceSubtractUncorrelated(6, numRolls, 3);
+            }
 
-    // white noise drawn from a triangular distribution
-    printf("RollDiceAdditiveUncorrelated\n\n");
-    RollDiceAdditiveUncorrelated(6, 2, 16);
-    RollDiceAdditiveUncorrelated(6, 2, 128);
-    RollDiceAdditiveUncorrelated(6, 2, 1024);
-    RollDiceAdditiveUncorrelated(6, 2, 1024 * 16);
+            // white noise drawn from a gaussian distribution
+            {
+                GaussianUncorrelated(0.0f, 1.0f, numRolls);
+                GaussianUncorrelated(1.0f, 3.0f, numRolls);
+            }
+        }
 
-    // more white noise drawn from a triangular distribution
-    printf("RollDiceAdditiveUncorrelated\n\n");
-    RollDiceAdditiveUncorrelated(6, 3, 16);
-    RollDiceAdditiveUncorrelated(6, 3, 128);
-    RollDiceAdditiveUncorrelated(6, 3, 1024);
-    RollDiceAdditiveUncorrelated(6, 3, 1024 * 16);
+        // red noise drawn from a triangular distribution
+        {
+            RollDiceAdditiveCorrelated(6, 2, numRolls);
+            RollDiceAdditiveCorrelated(6, 3, numRolls);
+        }
 
-    // red noise drawn from a triangular distribution
-    printf("RollDiceAdditiveCorrelated\n\n");
-    RollDiceAdditiveCorrelated(6, 2, 16);
-    RollDiceAdditiveCorrelated(6, 2, 128);
-    RollDiceAdditiveCorrelated(6, 2, 1024);
-    RollDiceAdditiveCorrelated(6, 2, 1024*16);
-
-    // more red noise drawn from a "triangular" distribution
-    printf("RollDiceAdditiveCorrelated\n\n");
-    RollDiceAdditiveCorrelated(6, 3, 16);
-    RollDiceAdditiveCorrelated(6, 3, 128);
-    RollDiceAdditiveCorrelated(6, 3, 1024);
-    RollDiceAdditiveCorrelated(6, 3, 1024 * 16);
-
-    // blue noise drawn from a triangular distribution
-    printf("RollDiceSubtractCorrelated\n\n");
-    RollDiceSubtractCorrelated(6, 16, 2);
-    RollDiceSubtractCorrelated(6, 128, 2);
-    RollDiceSubtractCorrelated(6, 1024, 2);
-    RollDiceSubtractCorrelated(6, 1024 * 16, 2);
-
-    // more blue noise drawn from a "triangular" distribution
-    printf("RollDiceSubtractCorrelated\n\n");
-    RollDiceSubtractCorrelated(6, 16, 3);
-    RollDiceSubtractCorrelated(6, 128, 3);
-    RollDiceSubtractCorrelated(6, 1024, 3);
-    RollDiceSubtractCorrelated(6, 1024 * 16, 3);
-
-    // more blue noise drawn from a "triangular" distribution
-    printf("RollDiceSubtractCorrelated\n\n");
-    RollDiceSubtractCorrelated(6, 16, 4);
-    RollDiceSubtractCorrelated(6, 128, 4);
-    RollDiceSubtractCorrelated(6, 1024, 4);
-    RollDiceSubtractCorrelated(6, 1024 * 16, 4);
-
-    // white noise drawn from a triangular distribution
-    printf("RollDiceSubtractUncorrelated\n\n");
-    RollDiceSubtractUncorrelated(6, 16, 2);
-    RollDiceSubtractUncorrelated(6, 128, 2);
-    RollDiceSubtractUncorrelated(6, 1024, 2);
-    RollDiceSubtractUncorrelated(6, 1024 * 16, 2);
-
-    // more white noise drawn from a "triangular" distribution
-    printf("RollDiceSubtractUncorrelated\n\n");
-    RollDiceSubtractUncorrelated(6, 16, 3);
-    RollDiceSubtractUncorrelated(6, 128, 3);
-    RollDiceSubtractUncorrelated(6, 1024, 3);
-    RollDiceSubtractUncorrelated(6, 1024 * 16, 3);
+        // blue noise drawn from a triangular distribution
+        {
+            RollDiceSubtractCorrelated(6, numRolls, 2);
+            RollDiceSubtractCorrelated(6, numRolls, 3);
+            RollDiceSubtractCorrelated(6, numRolls, 4);
+        }
+    }
 
     return 0;
 }
@@ -407,7 +372,8 @@ int main(int argc, char** argv)
 
 TODO:
 
-* maybe don't need 1 million samples for the high end test. try 8k? or 16k?
+* try a large number of dice for the correlated thing, to hopefully see a better spectrum.
+
 * experiment by rolling more dice to see how it changes the spectrum.
  * it should be more dice rolled = more like white noise. fewer dice rolled then probably = more filtered?
 
