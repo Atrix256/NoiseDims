@@ -239,20 +239,30 @@ void RollDiceAdditiveUncorrelated(int sides, int numDice, int numRolls)
     TestData(fileName, rolls, sides, 0, numDice * 5);
 }
 
-void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
+void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls, int numRerolls)
 {
     std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
 
     // prime the dice
     std::vector<int> currentDice(numDice);
     for (int& d : currentDice)
         d = RollDice(rng, sides);
 
+    int nextToReroll = 0;
+
     // do dice rolls
     std::vector<int> rolls(numRolls, 0);
     for (int index = 0; index < numRolls; ++index)
     {
-        currentDice[index % numDice] = RollDice(rng, sides);
+        // reroll however many dice we should
+        for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+        {
+            currentDice[nextToReroll] = RollDice(rng, sides);
+            nextToReroll = (nextToReroll + 1) % numDice;
+        }
 
         for (int d : currentDice)
             rolls[index] += d;
@@ -260,8 +270,44 @@ void RollDiceAdditiveCorrelated(int sides, int numDice, int numRolls)
 
     // do tests
     char fileName[256];
-    sprintf(fileName, "out/addcorrelated%i", numDice);
+    sprintf(fileName, "out/addcorrelated%i_%i", numDice, numRerolls);
     TestData(fileName, rolls, sides, 0, numDice * 5);
+}
+
+void GaussianAdditiveCorrelated(int numDice, float mean, float sigma, int numRolls, int numRerolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+    std::normal_distribution<float> dist(mean, sigma);
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
+
+    // prime the dice
+    std::vector<float> currentDice(numDice);
+    for (float& d : currentDice)
+        d = dist(rng);
+
+    int nextToReroll = 0;
+
+    // do dice rolls
+    std::vector<float> rolls(numRolls, 0);
+    for (int index = 0; index < numRolls; ++index)
+    {
+        // reroll however many dice we should
+        for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+        {
+            currentDice[nextToReroll] = dist(rng);
+            nextToReroll = (nextToReroll + 1) % numDice;
+        }
+
+        for (float d : currentDice)
+            rolls[index] += d;
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/gaussianaddcorrelated%i_%i", numDice, numRerolls);
+    TestData(fileName, rolls, mean, sigma);
 }
 
 void RollDiceSubtractUncorrelated(int sides, int numRolls, int numDice)
@@ -321,6 +367,42 @@ void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice, int numRer
     TestData(fileName, rolls, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
 }
 
+void GaussianSubtractCorrelated(int numDice, float mean, float sigma, int numRolls, int numRerolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+    std::normal_distribution<float> dist(mean, sigma);
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
+
+    // prime the dice
+    std::vector<float> currentDice(numDice);
+    for (float& d : currentDice)
+        d = dist(rng);
+
+    int nextToReroll = 0;
+
+    // do dice rolls
+    std::vector<float> rolls(numRolls, 0);
+    for (int index = 0; index < numRolls; ++index)
+    {
+        // reroll however many dice we should
+        for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+        {
+            currentDice[nextToReroll] = dist(rng);
+            nextToReroll = (nextToReroll + 1) % numDice;
+        }
+
+        for (int i = 0; i < numDice; ++i)
+            rolls[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/gaussiansubcorrelated%i_%i", numDice, numRerolls);
+    TestData(fileName, rolls, mean, sigma);
+}
+
 int main(int argc, char** argv)
 {
     int c_rolls[] =
@@ -363,9 +445,19 @@ int main(int argc, char** argv)
 
         // red noise drawn from a triangular distribution
         {
-            RollDiceAdditiveCorrelated(6, 2, numRolls);
-            RollDiceAdditiveCorrelated(6, 3, numRolls);
+            RollDiceAdditiveCorrelated(6, 2, numRolls, 1);
+            RollDiceAdditiveCorrelated(6, 3, numRolls, 1);
+            RollDiceAdditiveCorrelated(6, 4, numRolls, 1);
+            RollDiceAdditiveCorrelated(6, 10, numRolls, 1);
+            RollDiceAdditiveCorrelated(6, 20, numRolls, 1);
+            RollDiceAdditiveCorrelated(6, 20, numRolls, 5);
+            RollDiceAdditiveCorrelated(6, 20, numRolls, 10);
+            RollDiceAdditiveCorrelated(6, 20, numRolls, 15);
+            RollDiceAdditiveCorrelated(6, 20, numRolls, 19);
         }
+
+        // red noise from a gaussian distribution
+        GaussianAdditiveCorrelated(20, 0.0f, 1.0f, numRolls, 1);
 
         // blue noise drawn from a triangular distribution
         {
@@ -379,6 +471,9 @@ int main(int argc, char** argv)
             RollDiceSubtractCorrelated(6, numRolls, 20, 15);
             RollDiceSubtractCorrelated(6, numRolls, 20, 19);
         }
+
+        // blue noise from a gaussian distribution
+        GaussianSubtractCorrelated(20, 0.0f, 1.0f, numRolls, 1);
     }
 
     return 0;
@@ -387,21 +482,9 @@ int main(int argc, char** argv)
 
 /*
 
-TODO:
-
-* make multiple rerolls be a feature of red noise too
-
-* add column headers to the csv's
-
-- the experiments from https://www.digido.com/ufaqs/dither-noise-probability-density-explained/
-- particularly that drawing from gaussian can be white noise?!
-
-? did your multi dice experiment work with blue noise??
-
-! histogram (range?) seems slightly wrong somehow. need to look into it.
-
-
 NOTES:
-* more dice rerolls = closer to white noise. true for blue & i bet it's true for red.
+* more dice rerolls = closer to white noise. So, fewer rerolls = more strongly filtered.
+* more dice = better color and distribution
+* more rolls = better color and distribution
 
 */
