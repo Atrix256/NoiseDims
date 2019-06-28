@@ -286,27 +286,38 @@ void RollDiceSubtractUncorrelated(int sides, int numRolls, int numDice)
     TestData(fileName, rolls, sides, -(sides - 1)*(numDice-1), (sides - 1)*(numDice-1));
 }
 
-void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice)
+void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice, int numRerolls)
 {
     std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
 
     // prime the dice
     std::vector<int> currentDice(numDice);
     for (int& d : currentDice)
         d = RollDice(rng, sides);
 
+    int nextToReroll = 0;
+
     // do dice rolls
     std::vector<int> rolls(numRolls, 0);
     for (int index = 0; index < numRolls; ++index)
     {
-        currentDice[index % numDice] = RollDice(rng, sides);
+        // reroll however many dice we should
+        for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+        {
+            currentDice[nextToReroll] = RollDice(rng, sides);
+            nextToReroll = (nextToReroll + 1) % numDice;
+        }
+
         for (int i = 0; i < numDice; ++i)
             rolls[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
     }
 
     // do tests
     char fileName[256];
-    sprintf(fileName, "out/subcorrelated%i", numDice);
+    sprintf(fileName, "out/subcorrelated%i_%i", numDice, numRerolls);
     TestData(fileName, rolls, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
 }
 
@@ -358,9 +369,15 @@ int main(int argc, char** argv)
 
         // blue noise drawn from a triangular distribution
         {
-            RollDiceSubtractCorrelated(6, numRolls, 2);
-            RollDiceSubtractCorrelated(6, numRolls, 3);
-            RollDiceSubtractCorrelated(6, numRolls, 4);
+            RollDiceSubtractCorrelated(6, numRolls, 2, 1);
+            RollDiceSubtractCorrelated(6, numRolls, 3, 1);
+            RollDiceSubtractCorrelated(6, numRolls, 4, 1);
+            RollDiceSubtractCorrelated(6, numRolls, 10, 1);
+            RollDiceSubtractCorrelated(6, numRolls, 20, 1);
+            RollDiceSubtractCorrelated(6, numRolls, 20, 5);
+            RollDiceSubtractCorrelated(6, numRolls, 20, 10);
+            RollDiceSubtractCorrelated(6, numRolls, 20, 15);
+            RollDiceSubtractCorrelated(6, numRolls, 20, 19);
         }
     }
 
@@ -372,11 +389,9 @@ int main(int argc, char** argv)
 
 TODO:
 
-* try a large number of dice for the correlated thing, to hopefully see a better spectrum.
+* make multiple rerolls be a feature of red noise too
 
-* experiment by rolling more dice to see how it changes the spectrum.
- * it should be more dice rolled = more like white noise. fewer dice rolled then probably = more filtered?
-
+* add column headers to the csv's
 
 - the experiments from https://www.digido.com/ufaqs/dither-noise-probability-density-explained/
 - particularly that drawing from gaussian can be white noise?!
@@ -384,5 +399,9 @@ TODO:
 ? did your multi dice experiment work with blue noise??
 
 ! histogram (range?) seems slightly wrong somehow. need to look into it.
+
+
+NOTES:
+* more dice rerolls = closer to white noise. true for blue & i bet it's true for red.
 
 */
