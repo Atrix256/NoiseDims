@@ -398,9 +398,237 @@ void GaussianSubtractCorrelated(int numDice, float mean, float sigma, int numRol
     }
 
     // do tests
-    char fileName[256];
+    char fileName[512];
     sprintf(fileName, "out/gaussiansubcorrelated%i_%i", numDice, numRerolls);
     TestData(fileName, rolls, mean, sigma);
+}
+
+void AddBlueRed(int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    int numRerolls = 1;
+    int sides = 6;
+    int numDice = 20;
+
+    std::vector<int> rollsRed(numRolls, 0);
+    std::vector<int> rollsBlue(numRolls, 0);
+
+    // red noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int d : currentDice)
+                rollsRed[index] += d;
+        }
+    }
+
+    // blue noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        std::vector<int> rolls(numRolls, 0);
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+                rollsBlue[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+        }
+    }
+
+    std::vector<int> rolls(numRolls, 0);
+    int minValue = 10000;
+    int maxValue = -10000;
+    for (int index = 0; index < numRolls; ++index)
+    {
+        rolls[index] = rollsRed[index] + rollsBlue[index];
+        minValue = std::min(minValue, rolls[index]);
+        maxValue = std::max(maxValue, rolls[index]);
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/addbluered%i", numDice);
+    TestData(fileName, rolls, 6, minValue, maxValue);
+}
+
+void MixBlueRed(int numRolls, float redPercentage)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    int numRerolls = 1;
+    int sides = 6;
+    int numDice = 20;
+
+    std::vector<int> rollsRed(numRolls, 0);
+    std::vector<int> rollsBlue(numRolls, 0);
+
+    // red noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int d : currentDice)
+                rollsRed[index] += d;
+        }
+    }
+
+    // blue noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        std::vector<int> rolls(numRolls, 0);
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+                rollsBlue[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+        }
+    }
+
+    std::vector<int> rolls(numRolls, 0);
+    int minValue = 10000;
+    int maxValue = -10000;
+    for (int index = 0; index < numRolls; ++index)
+    {
+        rolls[index] = int(float(rollsRed[index]) * 0.5f + float(rollsBlue[index]) * 0.5f);
+        minValue = std::min(minValue, rolls[index]);
+        maxValue = std::max(maxValue, rolls[index]);
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/mixbluered%i_%i", numDice, int(100.0f * redPercentage));
+    TestData(fileName, rolls, 6, minValue, maxValue);
+}
+
+void MaxBlueRed(int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    int numRerolls = 1;
+    int sides = 6;
+    int numDice = 20;
+
+    std::vector<int> rollsRed(numRolls, 0);
+    std::vector<int> rollsBlue(numRolls, 0);
+
+    // red noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int d : currentDice)
+                rollsRed[index] += d;
+        }
+    }
+
+    // blue noise
+    {
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        std::vector<int> rolls(numRolls, 0);
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+                rollsBlue[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+        }
+    }
+
+    std::vector<int> rolls(numRolls, 0);
+    int minValue = 10000;
+    int maxValue = -10000;
+    for (int index = 0; index < numRolls; ++index)
+    {
+        rolls[index] = std::max(rollsRed[index], rollsBlue[index]);
+        minValue = std::min(minValue, rolls[index]);
+        maxValue = std::max(maxValue, rolls[index]);
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/maxbluered%i", numDice);
+    TestData(fileName, rolls, 6, minValue, maxValue);
 }
 
 int main(int argc, char** argv)
@@ -474,6 +702,17 @@ int main(int argc, char** argv)
 
         // blue noise from a gaussian distribution
         GaussianSubtractCorrelated(20, 0.0f, 1.0f, numRolls, 1);
+
+        // add blue and red noise
+        AddBlueRed(numRolls);
+
+        // mix (lerp by a constant) red and blue noise
+        MixBlueRed(numRolls, 0.25f);
+        MixBlueRed(numRolls, 0.5f);
+        MixBlueRed(numRolls, 0.75f);
+
+        // max red and blue noise
+        MaxBlueRed(numRolls);
     }
 
     return 0;
@@ -486,5 +725,11 @@ NOTES:
 * more dice rerolls = closer to white noise. So, fewer rerolls = more strongly filtered.
 * more dice = better color and distribution
 * more rolls = better color and distribution
+
+Interesting info about how it relates to convolution
+https://stats.stackexchange.com/questions/331973/why-is-the-sum-of-two-random-variables-a-convolution/331983#331983
+https://twitter.com/ApoorvaJ/status/1144302805819305989?s=03
+
+MaxBlueRed is a throwback to the maxing of uniform random values post
 
 */
