@@ -1054,4 +1054,7 @@ hyperuniformity stuff
 https://en.wikipedia.org/wiki/Disordered_hyperuniformity
 https://www.quantamagazine.org/hyperuniformity-found-in-birds-math-and-physics-20160712
 
+correlated gaussian noise. but correlated how?
+https://www.mathworks.com/matlabcentral/fileexchange/21156-correlated-gaussian-noise
+
 */
