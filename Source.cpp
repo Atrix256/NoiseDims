@@ -631,6 +631,121 @@ void MaxBlueRed(int numRolls)
     TestData(fileName, rolls, 6, minValue, maxValue);
 }
 
+void VossAlgorithm(int sides, int numDice, int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // prime the dice
+    std::vector<int> currentDice(numDice);
+    for (int& d : currentDice)
+        d = RollDice(rng, sides);
+
+    // get the value of the first dice roll
+    std::vector<int> rolls(numRolls, 0);
+    for (int d : currentDice)
+        rolls[0] += d;
+
+    // do dice rolls
+    for (size_t rollIndex = 1; rollIndex < numRolls; ++rollIndex)
+    {
+        // re-roll the dice that need changing. A varying number each iteration.
+        for (size_t diceIndex = 0; diceIndex < numDice; ++diceIndex)
+        {
+            size_t mask = size_t(1) << diceIndex;
+
+            if ((rollIndex & mask) != ((rollIndex - 1) & mask))
+                currentDice[diceIndex] = RollDice(rng, sides);
+        }
+
+        // sum the dice
+        for (int d : currentDice)
+            rolls[rollIndex] += d;
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/voss%i_%i", numDice, sides);
+    TestData(fileName, rolls, sides, 0, numDice * (sides-1));
+}
+
+size_t LeadingZeros(size_t value)
+{
+    size_t ret = 0;
+    while (value && (value & 1) == 0)
+    {
+        value /= 2;
+        ret++;
+    }
+    return ret;
+}
+
+void VossMcCartneyAlgorithm(int sides, int numDice, int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // prime the dice
+    std::vector<int> currentDice(numDice);
+    for (int& d : currentDice)
+        d = RollDice(rng, sides);
+
+    // get the value of the first dice roll
+    std::vector<int> rolls(numRolls, 0);
+    for (int d : currentDice)
+        rolls[0] += d;
+
+    // do dice rolls
+    for (size_t rollIndex = 1; rollIndex < numRolls; ++rollIndex)
+    {
+        // reroll one die each iteration. Constant workload.
+        // NOTE: since diceToReroll can be out of bounds, i'm using modulus to keep it in bounds.  That doesn't feel correct but i'm not sure what a better option is.
+        size_t diceToReroll = LeadingZeros(rollIndex) % numDice;
+        currentDice[diceToReroll] = RollDice(rng, sides);
+
+        // sum the dice
+        for (int d : currentDice)
+            rolls[rollIndex] += d;
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/vossmc%i_%i", numDice, sides);
+    TestData(fileName, rolls, sides, 0, numDice * (sides - 1));
+}
+
+void VossMcCartneyStochasticAlgorithm(int sides, int numDice, int numRolls)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // prime the dice
+    std::vector<int> currentDice(numDice);
+    for (int& d : currentDice)
+        d = RollDice(rng, sides);
+
+    // get the value of the first dice roll
+    std::vector<int> rolls(numRolls, 0);
+    for (int d : currentDice)
+        rolls[0] += d;
+
+    // do dice rolls
+    std::geometric_distribution<int> dist(0.5);
+    for (size_t rollIndex = 1; rollIndex < numRolls; ++rollIndex)
+    {
+        // reroll one die each iteration. Constant workload.
+        // NOTE: since diceToReroll can be out of bounds, i'm using modulus to keep it in bounds.  That doesn't feel correct but i'm not sure what a better option is.
+        size_t diceToReroll = dist(rng) % numDice;
+        currentDice[diceToReroll] = RollDice(rng, sides);
+
+        // sum the dice
+        for (int d : currentDice)
+            rolls[rollIndex] += d;
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/vossmcstoch%i_%i", numDice, sides);
+    TestData(fileName, rolls, sides, 0, numDice * (sides - 1));
+}
+
 int main(int argc, char** argv)
 {
     int c_rolls[] =
@@ -638,12 +753,24 @@ int main(int argc, char** argv)
         16,
         128,
         1024,
-        1024 * 16
+        1024 * 8
     };
 
     for (int rollsIndex = 0; rollsIndex < _countof(c_rolls); ++rollsIndex)
     {
         int numRolls = c_rolls[rollsIndex];
+
+        // TODO: move these to the end
+        {
+            // pink noise with voss algorithm
+            VossAlgorithm(6, 4, numRolls);
+
+            // pink noise with McCartney modifications
+            VossMcCartneyAlgorithm(6, 4, numRolls);
+
+            // pink noise with stochastic modifications
+            VossMcCartneyStochasticAlgorithm(6, 4, numRolls);
+        }
 
         // white noise
         {
@@ -721,6 +848,9 @@ int main(int argc, char** argv)
 
 /*
 
+TODO:
+* maybe do eg 100 tests and average them? may switch to 8k instead of 16k
+
 NOTES:
 * more dice rerolls = closer to white noise. So, fewer rerolls = more strongly filtered.
 * more dice = better color and distribution
@@ -730,6 +860,19 @@ Interesting info about how it relates to convolution
 https://stats.stackexchange.com/questions/331973/why-is-the-sum-of-two-random-variables-a-convolution/331983#331983
 https://twitter.com/ApoorvaJ/status/1144302805819305989?s=03
 
+
+Voss algorithm & another, well explained:
+https://www.dsprelated.com/showarticle/908.php
+
+
+
 MaxBlueRed is a throwback to the maxing of uniform random values post
+
+
+
+NEXT:
+* hyper gaussian distribution?
+* box-muller transform blue noise?
+* how to test how good it is... maybe fit a gaussian to the data points and compare the error vs the real gaussian that it's drawn from?
 
 */
