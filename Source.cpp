@@ -610,6 +610,7 @@ void AddBlueRed(int numRolls, int numTests)
 void MixBlueRed(int numRolls, float redPercentage, int numTests)
 {
     std::mt19937 rng(GetRNGSeed());
+    float bluePercentage = 1.0f - redPercentage;
 
     int numRerolls = 1;
     int sides = 6;
@@ -680,7 +681,7 @@ void MixBlueRed(int numRolls, float redPercentage, int numTests)
 
         for (int index = 0; index < numRolls; ++index)
         {
-            rolls[index] = int(float(rollsRed[index]) * 0.5f + float(rollsBlue[index]) * 0.5f);
+            rolls[index] = int(float(rollsRed[index]) * redPercentage + float(rollsBlue[index]) * bluePercentage);
             minValue = std::min(minValue, rolls[index]);
             maxValue = std::max(maxValue, rolls[index]);
         }
@@ -949,12 +950,14 @@ int main(int argc, char** argv)
             {
                 RollDiceAdditiveUncorrelated(6, 2, numRolls, numTests);
                 RollDiceAdditiveUncorrelated(6, 3, numRolls, numTests);
+                RollDiceAdditiveUncorrelated(6, 20, numRolls, numTests);
             }
 
             // white noise drawn from a triangular distribution
             {
                 RollDiceSubtractUncorrelated(6, numRolls, 2, numTests);
                 RollDiceSubtractUncorrelated(6, numRolls, 3, numTests);
+                RollDiceSubtractUncorrelated(6, numRolls, 20, numTests);
             }
 
             // white noise drawn from a gaussian distribution
@@ -1003,6 +1006,7 @@ int main(int argc, char** argv)
         MixBlueRed(numRolls, 0.25f, numTests);
         MixBlueRed(numRolls, 0.5f, numTests);
         MixBlueRed(numRolls, 0.75f, numTests);
+        MixBlueRed(numRolls, 0.99f, numTests);
 
         // max red and blue noise
         MaxBlueRed(numRolls, numTests);
