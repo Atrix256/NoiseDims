@@ -1003,6 +1003,7 @@ int main(int argc, char** argv)
         AddBlueRed(numRolls, numTests);
 
         // mix (lerp by a constant) red and blue noise
+        MixBlueRed(numRolls, 0.01f, numTests);
         MixBlueRed(numRolls, 0.25f, numTests);
         MixBlueRed(numRolls, 0.5f, numTests);
         MixBlueRed(numRolls, 0.75f, numTests);
