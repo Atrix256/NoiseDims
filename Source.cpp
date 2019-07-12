@@ -478,6 +478,97 @@ void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice, int numRer
     TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
 }
 
+void RollDiceSubtractCorrelatedZero(int sides, int numRolls, int numDice, int numRerolls, int numTests)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
+
+    // do each test
+    std::vector<std::vector<int>> tests(numTests);
+    for (int testIndex = 0; testIndex < numTests; ++testIndex)
+    {
+        // allocate space for this test
+        std::vector<int>& rolls = tests[testIndex];
+        rolls.resize(numRolls, 0);
+
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls / 2; index++)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+                rolls[index*2] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+            // Leave every other roll at zero
+        }
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/subcorrelatedzero%i_%i", numDice, numRerolls);
+    TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
+}
+
+void RollDicePeriodicSubtractCorrelated(int sides, int numRolls, int numDice, int numRerolls, int signFlipPeriod, int numTests)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
+
+    // do each test
+    std::vector<std::vector<int>> tests(numTests);
+    for (int testIndex = 0; testIndex < numTests; ++testIndex)
+    {
+        // allocate space for this test
+        std::vector<int>& rolls = tests[testIndex];
+        rolls.resize(numRolls, 0);
+
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+            {
+                bool flip = ((index + i) / signFlipPeriod) % 2;
+                rolls[index] += currentDice[i] * (flip ? -1 : 1);
+            }
+        }
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/subperiodiccorrelated%i_%i_%i", numDice, signFlipPeriod, numRerolls);
+    TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
+}
+
+
 void GaussianSubtractCorrelated(int numDice, float mean, float sigma, int numRolls, int numRerolls, int numTests)
 {
     std::mt19937 rng(GetRNGSeed());
@@ -1011,6 +1102,20 @@ int main(int argc, char** argv)
 
         // max red and blue noise
         MaxBlueRed(numRolls, numTests);
+
+        // green noise attempts
+        {
+            // thanks to https://twitter.com/eigenbom
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 2, numTests);  // green
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 3, numTests);  // bad / odd
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 10, numTests); // reddish green
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 5, numTests);  // multiple peaks and kinda weird
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 4, numTests);  // bad / odd
+            RollDicePeriodicSubtractCorrelated(6, numRolls, 20, 1, 20, numTests); // bad / odd
+
+            // thanks to https://twitter.com/Nurflet
+            RollDiceSubtractCorrelatedZero(6, numRolls, 20, 1, numTests);  // nice and green
+        }
 
         // pink noise
         {
