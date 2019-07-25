@@ -478,6 +478,105 @@ void RollDiceSubtractCorrelated(int sides, int numRolls, int numDice, int numRer
     TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
 }
 
+void RollDiceSubtractCorrelatedDelay(int sides, int numRolls, int delay, int numTests)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    int numDice = delay + 1;
+    int numRerolls = 1;
+
+    // do each test
+    std::vector<std::vector<int>> tests(numTests);
+    for (int testIndex = 0; testIndex < numTests; ++testIndex)
+    {
+        // allocate space for this test
+        std::vector<int>& rolls = tests[testIndex];
+        rolls.resize(numRolls, 0);
+
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            // do the delayed subtraction
+            rolls[index] = currentDice[nextToReroll] - currentDice[(nextToReroll - delay + numDice) % numDice];
+        }
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/subcorrelateddelay%i", delay);
+    TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
+}
+
+void RollDiceSubtractCorrelatedInterleave(int sides, int numRolls, int numDice, int numRerolls, int numInterleaves, int numTests)
+{
+    std::mt19937 rng(GetRNGSeed());
+
+    // no funny business boyos
+    numRerolls = std::min(numRerolls, numDice);
+
+    // do each test
+    std::vector<std::vector<int>> tests(numTests);
+    for (int testIndex = 0; testIndex < numTests; ++testIndex)
+    {
+        // allocate space for this test
+        std::vector<int>& rolls = tests[testIndex];
+        rolls.resize(numRolls, 0);
+
+        // prime the dice
+        std::vector<int> currentDice(numDice);
+        for (int& d : currentDice)
+            d = RollDice(rng, sides);
+
+        int nextToReroll = 0;
+
+        // do dice rolls
+        for (int index = 0; index < numRolls; ++index)
+        {
+            // reroll however many dice we should
+            for (int rerollIndex = 0; rerollIndex < numRerolls; ++rerollIndex)
+            {
+                currentDice[nextToReroll] = RollDice(rng, sides);
+                nextToReroll = (nextToReroll + 1) % numDice;
+            }
+
+            for (int i = 0; i < numDice; ++i)
+                rolls[index] += currentDice[i] * ((((index + i) % numDice) % 2) ? -1 : 1);
+        }
+
+        // do interleaves
+        for (int interleaveIndex = 0; interleaveIndex < numInterleaves; ++interleaveIndex)
+        {
+            std::vector<int> temp = rolls;
+
+            for (int rollIndex = 0; rollIndex < numRolls / 2; ++rollIndex)
+            {
+                rolls[rollIndex * 2 + 0] = temp[rollIndex];
+                rolls[rollIndex * 2 + 1] = temp[numRolls/2 + rollIndex];
+            }
+        }
+    }
+
+    // do tests
+    char fileName[256];
+    sprintf(fileName, "out/subcorrelatedinterleave%i_%i_%i", numDice, numRerolls, numInterleaves);
+    TestData(fileName, tests, sides, -(sides - 1)*(numDice - 1), (sides - 1)*(numDice - 1));
+}
+
 void RollDiceSubtractCorrelatedZero(int sides, int numRolls, int numDice, int numRerolls, int numTests)
 {
     std::mt19937 rng(GetRNGSeed());
@@ -1115,6 +1214,14 @@ int main(int argc, char** argv)
 
             // thanks to https://twitter.com/Nurflet
             RollDiceSubtractCorrelatedZero(6, numRolls, 20, 1, numTests);  // nice and green
+            RollDiceSubtractCorrelatedInterleave(6, numRolls, 20, 1, 1, numTests);
+            RollDiceSubtractCorrelatedInterleave(6, numRolls, 20, 1, 2, numTests);
+            RollDiceSubtractCorrelatedInterleave(6, numRolls, 20, 1, 3, numTests);
+            RollDiceSubtractCorrelatedInterleave(6, numRolls, 20, 1, 10, numTests);
+
+            // TODO: next is... roll 3 dice, A,B,C.  Take C-A. permute through repeatedly.  how to use more dice... longer delay?
+            // didn't work out that great, so omitting it
+            //RollDiceSubtractCorrelatedDelay(6, numRolls, 1, numTests);
         }
 
         // pink noise
